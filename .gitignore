@@ -1,6 +1,10 @@
 # Expense data files
 expenses.csv
 
+# Logs
+logs/
+*.log
+
 # Python cache
 __pycache__/
 *.py[cod]

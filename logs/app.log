@@ -1,0 +1,10 @@
+2026-02-27 15:42:45,516 | smart_expense_tracker | INFO | Hi, PyCharm
+2026-02-27 15:43:54,594 | smart_expense_tracker | INFO | Captured Expense Details
+2026-02-27 15:43:54,594 | smart_expense_tracker | DEBUG | Amount: 10.26
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Date: 28/02/2026
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Description: ice cream
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Payment_method: card
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Currency: LKR
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Merchant: BING CHUN
+2026-02-27 15:43:54,595 | smart_expense_tracker | DEBUG | Location: OGF
+2026-02-27 15:43:54,595 | smart_expense_tracker | INFO | Expense saved to expenses.csv

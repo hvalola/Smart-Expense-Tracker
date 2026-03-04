@@ -7,6 +7,16 @@ import csv
 import os
 
 from utils.logger import get_logger
+from utils.helpers import (
+    validate_amount,
+    validate_date,
+    validate_description,
+    validate_payment_method,
+    validate_currency,
+    validate_merchant,
+    validate_location,
+    ValidationError
+)
 
 
 logger = get_logger("smart_expense_tracker")
@@ -17,17 +27,40 @@ def print_hi(name):
     logger.info("Hi, %s", name)  # Press Ctrl+F8 to toggle the breakpoint.
 
 
+def get_validated_input(prompt: str, validator_func) -> str:
+    """
+    Get input from user with validation.
+    
+    Args:
+        prompt: Prompt to display to user
+        validator_func: Function to validate the input
+        
+    Returns:
+        str: Validated input
+    """
+    while True:
+        try:
+            user_input = input(prompt)
+            validated_value = validator_func(user_input)
+            return validated_value
+        except ValidationError as e:
+            logger.warning("Validation error: %s", str(e))
+            print(f"Error: {str(e)}. Please try again.")
+
+
 def capture_input():
-    """Capture expense details from the terminal."""
+    """Capture expense details from the terminal with validation."""
+    print("\n--- Enter Expense Details ---")
     expense = {
-        'amount': input("Amount: "),
-        'date': input("Date: "),
-        'description': input("Description: "),
-        'payment_method': input("Payment Method: "),
-        'currency': input("Currency: "),
-        'merchant': input("Merchant: "),
-        'location': input("Location: ")
+        'amount': str(get_validated_input("Amount: ", validate_amount)),
+        'date': get_validated_input("Date (YYYY-MM-DD or DD/MM/YYYY): ", validate_date),
+        'description': get_validated_input("Description: ", validate_description),
+        'payment_method': get_validated_input("Payment Method (cash/credit_card/debit_card/bank_transfer/digital_wallet/other): ", validate_payment_method),
+        'currency': get_validated_input("Currency (ISO 4217 code, e.g., USD): ", validate_currency),
+        'merchant': get_validated_input("Merchant: ", validate_merchant),
+        'location': get_validated_input("Location: ", validate_location)
     }
+    print()
     return expense
 
 

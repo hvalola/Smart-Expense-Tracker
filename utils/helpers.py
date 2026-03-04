@@ -199,3 +199,235 @@ def validate_location(location: str) -> str:
         raise ValidationError("Location must not exceed 150 characters")
     
     return location
+
+
+# ============================================================================
+# Data Cleansing Functions
+# ============================================================================
+
+def cleanse_amount(amount) -> float:
+    """
+    Cleanse amount data by converting to float and rounding to 2 decimals.
+    
+    Args:
+        amount: Amount value (can be string or numeric)
+        
+    Returns:
+        float: Cleansed amount rounded to 2 decimal places
+    """
+    try:
+        amount_float = float(str(amount).strip())
+        return round(amount_float, 2)
+    except (ValueError, AttributeError):
+        return None
+
+
+def cleanse_date(date_str: str) -> str:
+    """
+    Cleanse date by standardizing to YYYY-MM-DD format.
+    
+    Args:
+        date_str: Date string
+        
+    Returns:
+        str: Standardized date or None if invalid
+    """
+    date_str = str(date_str).strip()
+    
+    # Try common date formats
+    formats = ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d"]
+    
+    for date_format in formats:
+        try:
+            parsed_date = datetime.strptime(date_str, date_format)
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    
+    return None
+
+
+def cleanse_text(text: str, max_length: int = None) -> str:
+    """
+    Cleanse text by trimming whitespace and normalizing spaces.
+    
+    Args:
+        text: Text to cleanse
+        max_length: Optional maximum length to truncate
+        
+    Returns:
+        str: Cleansed text
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Strip leading/trailing whitespace and normalize internal spaces
+    text = ' '.join(text.strip().split())
+    
+    # Remove special characters but keep alphanumeric and basic punctuation
+    text = re.sub(r'[^\w\s.,&\-]', '', text)
+    
+    if max_length and len(text) > max_length:
+        text = text[:max_length].strip()
+    
+    return text
+
+
+def cleanse_payment_method(method: str) -> str:
+    """
+    Cleanse payment method by standardizing format.
+    
+    Args:
+        method: Payment method string
+        
+    Returns:
+        str: Standardized payment method or None if invalid
+    """
+    if not isinstance(method, str):
+        return None
+    
+    method = method.strip().lower()
+    
+    # Normalize variations
+    normalizations = {
+        'cash': 'cash',
+        'cc': 'credit_card',
+        'credit': 'credit_card',
+        'credit_card': 'credit_card',
+        'creditcard': 'credit_card',
+        'dc': 'debit_card',
+        'debit': 'debit_card',
+        'debit_card': 'debit_card',
+        'debitcard': 'debit_card',
+        'transfer': 'bank_transfer',
+        'bank_transfer': 'bank_transfer',
+        'wire': 'bank_transfer',
+        'wallet': 'digital_wallet',
+        'digital_wallet': 'digital_wallet',
+        'mobile': 'digital_wallet',
+        'paypal': 'digital_wallet',
+        'other': 'other'
+    }
+    
+    return normalizations.get(method, None)
+
+
+def cleanse_currency(currency: str) -> str:
+    """
+    Cleanse currency code by standardizing to uppercase ISO 4217 format.
+    
+    Args:
+        currency: Currency code
+        
+    Returns:
+        str: Standardized currency code or None if invalid
+    """
+    if not isinstance(currency, str):
+        return None
+    
+    currency = currency.strip().upper()
+    
+    if len(currency) == 3 and currency.isalpha():
+        return currency
+    
+    return None
+
+
+def cleanse_merchant(merchant: str) -> str:
+    """
+    Cleanse merchant name by standardizing format.
+    
+    Args:
+        merchant: Merchant name
+        
+    Returns:
+        str: Cleansed merchant name
+    """
+    return cleanse_text(merchant, max_length=100)
+
+
+def cleanse_location(location: str) -> str:
+    """
+    Cleanse location by standardizing format.
+    
+    Args:
+        location: Location name
+        
+    Returns:
+        str: Cleansed location
+    """
+    return cleanse_text(location, max_length=150)
+
+
+def cleanse_description(description: str) -> str:
+    """
+    Cleanse description by standardizing format.
+    
+    Args:
+        description: Description text
+        
+    Returns:
+        str: Cleansed description
+    """
+    return cleanse_text(description, max_length=255)
+
+
+def cleanse_expense_record(expense: dict) -> dict:
+    """
+    Cleanse an entire expense record for analysis.
+    
+    Args:
+        expense: Dictionary containing expense data
+        
+    Returns:
+        dict: Cleansed expense record
+    """
+    cleansed = {
+        'amount': cleanse_amount(expense.get('amount')),
+        'date': cleanse_date(expense.get('date')),
+        'description': cleanse_description(expense.get('description')),
+        'payment_method': cleanse_payment_method(expense.get('payment_method')),
+        'currency': cleanse_currency(expense.get('currency')),
+        'merchant': cleanse_merchant(expense.get('merchant')),
+        'location': cleanse_location(expense.get('location'))
+    }
+    
+    return cleansed
+
+
+def cleanse_dataset(expenses: list) -> tuple[list, dict]:
+    """
+    Cleanse a list of expense records and return cleansed data with quality report.
+    
+    Args:
+        expenses: List of expense dictionaries
+        
+    Returns:
+        tuple: (cleansed_records, quality_report)
+    """
+    cleansed_records = []
+    quality_report = {
+        'total_records': len(expenses),
+        'valid_records': 0,
+        'invalid_records': 0,
+        'records_with_missing_fields': 0,
+        'issues': []
+    }
+    
+    for idx, expense in enumerate(expenses):
+        cleansed = cleanse_expense_record(expense)
+        
+        # Check for None values (invalid fields)
+        none_count = sum(1 for v in cleansed.values() if v is None)
+        
+        if none_count == 0:
+            quality_report['valid_records'] += 1
+            cleansed_records.append(cleansed)
+        elif none_count < len(cleansed):
+            quality_report['records_with_missing_fields'] += 1
+            cleansed_records.append(cleansed)
+        else:
+            quality_report['invalid_records'] += 1
+            quality_report['issues'].append(f"Row {idx + 1}: All fields invalid")
+    
+    return cleansed_records, quality_report

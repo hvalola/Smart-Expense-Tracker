@@ -5,6 +5,7 @@
 
 import csv
 import os
+import json
 
 from utils.logger import get_logger
 from utils.helpers import (
@@ -15,7 +16,9 @@ from utils.helpers import (
     validate_currency,
     validate_merchant,
     validate_location,
-    ValidationError
+    ValidationError,
+    cleanse_expense_record,
+    cleanse_dataset
 )
 
 
@@ -83,6 +86,80 @@ def save_to_csv(expense, filename='expenses.csv'):
     except OSError as exc:
         logger.error("Failed to save expense to %s: %s", filename, exc)
         raise
+
+
+def load_expenses_from_csv(filename='expenses.csv') -> list:
+    """
+    Load expenses from CSV file.
+    
+    Args:
+        filename: CSV file to read
+        
+    Returns:
+        list: List of expense dictionaries
+    """
+    expenses = []
+    
+    if not os.path.isfile(filename):
+        logger.warning("File %s not found", filename)
+        return expenses
+    
+    try:
+        with open(filename, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            expenses = list(reader)
+        logger.info("Loaded %d expenses from %s", len(expenses), filename)
+    except OSError as exc:
+        logger.error("Failed to read %s: %s", filename, exc)
+    
+    return expenses
+
+
+def cleanse_and_report(filename='expenses.csv', output_file='cleansed_expenses.json'):
+    """
+    Cleanse expense data from CSV and generate quality report.
+    
+    Args:
+        filename: Source CSV file
+        output_file: Output file for cleansed data
+    """
+    print("\n--- Cleansing Expense Data ---")
+    
+    # Load raw data
+    expenses = load_expenses_from_csv(filename)
+    
+    if not expenses:
+        print("No expenses to cleanse.")
+        return
+    
+    # Cleanse dataset
+    cleansed_records, quality_report = cleanse_dataset(expenses)
+    
+    # Display report
+    print("\nData Quality Report:")
+    print(f"  Total Records: {quality_report['total_records']}")
+    print(f"  Valid Records: {quality_report['valid_records']}")
+    print(f"  Records with Missing Fields: {quality_report['records_with_missing_fields']}")
+    print(f"  Invalid Records: {quality_report['invalid_records']}")
+    
+    if quality_report['issues']:
+        print("\nIssues Found:")
+        for issue in quality_report['issues'][:10]:  # Show first 10 issues
+            print(f"  - {issue}")
+    
+    # Save cleansed data
+    try:
+        with open(output_file, 'w') as f:
+            json.dump({
+                'cleansed_records': cleansed_records,
+                'quality_report': quality_report
+            }, f, indent=2)
+        print(f"\nCleansed data saved to {output_file}")
+        logger.info("Cleansed %d valid records to %s", len(cleansed_records), output_file)
+    except OSError as exc:
+        logger.error("Failed to save cleansed data: %s", exc)
+    
+    print()
 
 
 # Press the green button in the gutter to run the script.
